@@ -45,17 +45,20 @@ class ScanResultTile extends StatelessWidget {
 }
 
 class TimerWidget extends StatefulWidget {
-  TimerWidget({this.notify});
+  TimerWidget({this.device, this.notify});
 
+  final BluetoothDevice device;
   final VoidCallback notify;
 
   @override
-  TimerWidgetState createState() => TimerWidgetState(notify: notify);
+  TimerWidgetState createState() =>
+      TimerWidgetState(device: device, notify: notify);
 }
 
 class TimerWidgetState extends State<TimerWidget> {
-  TimerWidgetState({this.notify});
+  TimerWidgetState({this.device, this.notify});
 
+  final BluetoothDevice device;
   final VoidCallback notify;
   int _hours = 0;
   int _minutes = 0;
@@ -253,55 +256,110 @@ class ChangeTimeButton extends StatelessWidget {
   }
 }
 
-class DeviceWidget extends StatelessWidget {
-  const DeviceWidget({Key key, this.device}) : super(key: key);
+class DeviceWidget extends StatefulWidget {
+  DeviceWidget({this.device});
 
   final BluetoothDevice device;
 
   @override
+  DeviceWidgetState createState() => DeviceWidgetState(device: device);
+}
+
+class DeviceWidgetState extends State<DeviceWidget> {
+  DeviceWidgetState({this.device});
+
+  final BluetoothDevice device;
+  bool autoReconnect = true;
+
+  @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: <Widget>[
-        StreamBuilder<BluetoothDeviceState>(
-            stream: device.state,
-            initialData: BluetoothDeviceState.connecting,
-            builder: (c, snapshot) {
-              VoidCallback onPressed;
-              String text;
-              switch (snapshot.data) {
-                case BluetoothDeviceState.connected:
-                  onPressed = () => device.disconnect();
-                  text = 'DISCONNECT';
-                  break;
-                case BluetoothDeviceState.disconnected:
-                  onPressed = () => device.connect();
-                  text = 'CONNECT';
-                  break;
-                default:
-                  onPressed = null;
-                  text = snapshot.data.toString().substring(21).toUpperCase();
-                  break;
-              }
-              return RaisedButton(
-                onPressed: onPressed,
-                child: Text(
-                  text,
+    return Column(
+      children: [
+        Column(
+          children: [
+            StreamBuilder<BluetoothDeviceState>(
+                stream: device.state,
+                initialData: BluetoothDeviceState.connecting,
+                builder: (c, snapshot) {
+                  if (snapshot.data == BluetoothDeviceState.connecting) {
+                    return Text(
+                      ('CONNECTING...'),
+                    );
+                  } else if (snapshot.data ==
+                          BluetoothDeviceState.disconnected &&
+                      autoReconnect) {
+                    device.connect();
+                    return Text(
+                      ('CONNECTION LOST, TRYING TO RECONNECT...'),
+                    );
+                  }
+                  return Text(
+                    (''),
+                  );
+                }),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: <Widget>[
+                StreamBuilder<BluetoothDeviceState>(
+                    stream: device.state,
+                    initialData: BluetoothDeviceState.connecting,
+                    builder: (c, snapshot) {
+                      VoidCallback onPressed;
+                      String text;
+                      switch (snapshot.data) {
+                        case BluetoothDeviceState.connected:
+                          onPressed = voluntaryDisconnect;
+                          text = 'DISCONNECT';
+                          break;
+                        case BluetoothDeviceState.disconnected:
+                          onPressed = voluntaryConnect;
+                          text = 'CONNECT';
+                          break;
+                        default:
+                          onPressed = null;
+                          text = snapshot.data
+                              .toString()
+                              .substring(21)
+                              .toUpperCase();
+                          break;
+                      }
+                      return RaisedButton(
+                        onPressed: onPressed,
+                        child: Text(
+                          text,
+                          style: Theme.of(context)
+                              .primaryTextTheme
+                              .button
+                              .copyWith(color: Colors.black),
+                        ),
+                      );
+                    }),
+                Text(
+                  device.name,
                   style: Theme.of(context)
                       .primaryTextTheme
-                      .button
+                      .title
                       .copyWith(color: Colors.black),
-                ),
-              );
-            }),
-        Text(
-          device.name,
-          style: Theme.of(context)
-              .primaryTextTheme
-              .title
-              .copyWith(color: Colors.black),
-        )
+                )
+              ],
+            ),
+          ],
+        ),
       ],
     );
+  }
+
+  void voluntaryDisconnect() {
+    device.disconnect();
+    setState(() {
+      autoReconnect = false;
+    });
+  }
+
+  void voluntaryConnect() {
+    device.connect();
+    setState(() {
+      autoReconnect = true;
+    });
   }
 }

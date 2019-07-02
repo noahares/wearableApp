@@ -144,7 +144,7 @@ class TimerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget timerSection = TimerWidget(notify: sendSignal);
+    Widget timerSection = TimerWidget(device: device, notify: sendSignal);
     Widget deviceSection = DeviceWidget(device: device);
     return Scaffold(
       appBar: AppBar(
