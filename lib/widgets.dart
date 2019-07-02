@@ -269,7 +269,7 @@ class DeviceWidgetState extends State<DeviceWidget> {
   DeviceWidgetState({this.device});
 
   final BluetoothDevice device;
-  bool autoReconnect = true;
+  final bool _autoReconnect = false;
 
   @override
   Widget build(BuildContext context) {
@@ -281,21 +281,30 @@ class DeviceWidgetState extends State<DeviceWidget> {
                 stream: device.state,
                 initialData: BluetoothDeviceState.connecting,
                 builder: (c, snapshot) {
-                  if (snapshot.data == BluetoothDeviceState.connecting) {
-                    return Text(
-                      ('CONNECTING...'),
-                    );
-                  } else if (snapshot.data ==
-                          BluetoothDeviceState.disconnected &&
-                      autoReconnect) {
-                    device.connect();
-                    return Text(
-                      ('CONNECTION LOST, TRYING TO RECONNECT...'),
-                    );
+                  final bool autoReconnect = _autoReconnect;
+                  switch (snapshot.data) {
+                    case BluetoothDeviceState.connecting:
+                      return Text(
+                        ('CONNECTING...'),
+                      );
+                      break;
+                    case BluetoothDeviceState.disconnected:
+                      if (autoReconnect) {
+                        device.connect();
+                        return Text(
+                          ('CONNECTION LOST, TRYING TO RECONNECT...'),
+                        );
+                      } else {
+                        return Text(
+                            (''),
+                        );
+                      }
+                      break;
+                    default:
+                      return Text(
+                        (''),
+                      );
                   }
-                  return Text(
-                    (''),
-                  );
                 }),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -308,11 +317,13 @@ class DeviceWidgetState extends State<DeviceWidget> {
                       String text;
                       switch (snapshot.data) {
                         case BluetoothDeviceState.connected:
-                          onPressed = voluntaryDisconnect;
+                          onPressed = () =>
+                              device.disconnect(); //_voluntaryDisconnect();
                           text = 'DISCONNECT';
                           break;
                         case BluetoothDeviceState.disconnected:
-                          onPressed = voluntaryConnect;
+                          onPressed =
+                              () => device.connect(); //_voluntaryConnect();
                           text = 'CONNECT';
                           break;
                         default:
@@ -323,6 +334,7 @@ class DeviceWidgetState extends State<DeviceWidget> {
                               .toUpperCase();
                           break;
                       }
+                      print(snapshot.data);
                       return RaisedButton(
                         onPressed: onPressed,
                         child: Text(
@@ -349,17 +361,18 @@ class DeviceWidgetState extends State<DeviceWidget> {
     );
   }
 
-  void voluntaryDisconnect() {
+
+  /*void _voluntaryDisconnect() {
     device.disconnect();
     setState(() {
-      autoReconnect = false;
+      _autoReconnect = false;
     });
   }
 
-  void voluntaryConnect() {
+  void _voluntaryConnect() {
     device.connect();
     setState(() {
-      autoReconnect = true;
+      _autoReconnect = true;
     });
-  }
+  }*/
 }

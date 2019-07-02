@@ -164,22 +164,26 @@ class TimerScreen extends StatelessWidget {
   void sendSignal() async {
     BluetoothCharacteristic characteristic;
     List<int> numMotors;
-    List<BluetoothService> services = await device.discoverServices();
-    for (BluetoothService service in services) {
-      var characteristics = service.characteristics;
-      for (BluetoothCharacteristic c in characteristics) {
-        if (c.uuid.toString().substring(4, 8) == '0001')
-          numMotors = await c.read();
-        if (c.uuid.toString().substring(4, 8) == '0003') characteristic = c;
+    try {
+      List<BluetoothService> services = await device.discoverServices();
+      for (BluetoothService service in services) {
+        var characteristics = service.characteristics;
+        for (BluetoothCharacteristic c in characteristics) {
+          if (c.uuid.toString().substring(4, 8) == '0001')
+            numMotors = await c.read();
+          if (c.uuid.toString().substring(4, 8) == '0003') characteristic = c;
+        }
       }
+      List<int> message = [0xFF, 0xFF, 0xFF, 0xFF];
+      List<int> stop = [0x00, 0x00, 0x00, 0x00];
+      if (numMotors.first == 5) {
+        message.add(0xFF);
+        stop.add(0x00);
+      }
+      await characteristic.write(message);
+      Timer(Duration(seconds: 2), () async => await characteristic.write(stop));
+    } catch (e) {
+      print(e);
     }
-    List<int> message = [0xFF, 0xFF, 0xFF, 0xFF];
-    List<int> stop = [0x00, 0x00, 0x00, 0x00];
-    if (numMotors.first == 5) {
-      message.add(0xFF);
-      stop.add(0x00);
-    }
-    await characteristic.write(message);
-    Timer(Duration(seconds: 2), () async => await characteristic.write(stop));
   }
 }
