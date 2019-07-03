@@ -269,110 +269,77 @@ class DeviceWidgetState extends State<DeviceWidget> {
   DeviceWidgetState({this.device});
 
   final BluetoothDevice device;
-  final bool _autoReconnect = false;
+  bool autoReconnect = true;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Column(
-          children: [
-            StreamBuilder<BluetoothDeviceState>(
-                stream: device.state,
-                initialData: BluetoothDeviceState.connecting,
-                builder: (c, snapshot) {
-                  final bool autoReconnect = _autoReconnect;
-                  switch (snapshot.data) {
-                    case BluetoothDeviceState.connecting:
-                      return Text(
-                        ('CONNECTING...'),
-                      );
-                      break;
-                    case BluetoothDeviceState.disconnected:
-                      if (autoReconnect) {
-                        device.connect();
-                        return Text(
-                          ('CONNECTION LOST, TRYING TO RECONNECT...'),
-                        );
-                      } else {
-                        return Text(
-                            (''),
-                        );
-                      }
-                      break;
-                    default:
-                      return Text(
-                        (''),
-                      );
-                  }
-                }),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[
-                StreamBuilder<BluetoothDeviceState>(
-                    stream: device.state,
-                    initialData: BluetoothDeviceState.connecting,
-                    builder: (c, snapshot) {
-                      VoidCallback onPressed;
-                      String text;
-                      switch (snapshot.data) {
-                        case BluetoothDeviceState.connected:
-                          onPressed = () =>
-                              device.disconnect(); //_voluntaryDisconnect();
-                          text = 'DISCONNECT';
-                          break;
-                        case BluetoothDeviceState.disconnected:
-                          onPressed =
-                              () => device.connect(); //_voluntaryConnect();
-                          text = 'CONNECT';
-                          break;
-                        default:
-                          onPressed = null;
-                          text = snapshot.data
-                              .toString()
-                              .substring(21)
-                              .toUpperCase();
-                          break;
-                      }
-                      print(snapshot.data);
-                      return RaisedButton(
-                        onPressed: onPressed,
-                        child: Text(
-                          text,
-                          style: Theme.of(context)
-                              .primaryTextTheme
-                              .button
-                              .copyWith(color: Colors.black),
-                        ),
-                      );
-                    }),
-                Text(
-                  device.name,
-                  style: Theme.of(context)
-                      .primaryTextTheme
-                      .title
-                      .copyWith(color: Colors.black),
-                )
-              ],
-            ),
-          ],
-        ),
-      ],
+    return Container(
+      child: StreamBuilder<BluetoothDeviceState>(
+            stream: device.state,
+            initialData: BluetoothDeviceState.connecting,
+            builder: (c, snapshot) {
+              VoidCallback onPressed;
+              String text;
+              String infoText;
+              switch (snapshot.data) {
+                case BluetoothDeviceState.connected:
+                  onPressed = () {
+                    autoReconnect = false;
+                    device.disconnect();
+                  };
+                  text = 'DISCONNECT';
+                  infoText = "CONNECTED";
+                  break;
+                case BluetoothDeviceState.disconnected:
+                  onPressed = () {
+                    autoReconnect = true;
+                    device.connect();
+                  };
+                  text = 'CONNECT';
+                  infoText = autoReconnect
+                      ? 'CONNECTION LOST, TRYING TO RECONNECT...'
+                      : 'DISCONNECTED';
+                  break;
+                default:
+                  onPressed = null;
+                  text = snapshot.data.toString().substring(21).toUpperCase();
+                  infoText = ('');
+                  break;
+              }
+              print(snapshot.data);
+              return Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Text(
+                      (infoText),
+                      style: Theme.of(context)
+                          .primaryTextTheme
+                          .subtitle
+                          .copyWith(color: Colors.black),
+                    ),
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          RaisedButton(
+                            onPressed: onPressed,
+                            child: Text(
+                              text,
+                              style: Theme.of(context)
+                                  .primaryTextTheme
+                                  .button
+                                  .copyWith(color: Colors.black),
+                            ),
+                          ),
+                          Text(
+                            device.name,
+                            style: Theme.of(context)
+                                .primaryTextTheme
+                                .title
+                                .copyWith(color: Colors.black),
+                          )
+                        ])
+                  ]);
+            }),
     );
   }
-
-
-  /*void _voluntaryDisconnect() {
-    device.disconnect();
-    setState(() {
-      _autoReconnect = false;
-    });
-  }
-
-  void _voluntaryConnect() {
-    device.connect();
-    setState(() {
-      _autoReconnect = true;
-    });
-  }*/
 }
