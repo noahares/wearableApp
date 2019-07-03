@@ -144,7 +144,7 @@ class TimerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget timerSection = TimerWidget(device: device, notify: sendSignal);
+    Widget timerSection = TimerWidget(device: device);
     Widget deviceSection = DeviceWidget(device: device);
     return Scaffold(
       appBar: AppBar(
@@ -160,30 +160,48 @@ class TimerScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  void sendSignal() async {
-    BluetoothCharacteristic characteristic;
-    List<int> numMotors;
-    try {
-      List<BluetoothService> services = await device.discoverServices();
-      for (BluetoothService service in services) {
-        var characteristics = service.characteristics;
-        for (BluetoothCharacteristic c in characteristics) {
-          if (c.uuid.toString().substring(4, 8) == '0001')
-            numMotors = await c.read();
-          if (c.uuid.toString().substring(4, 8) == '0003') characteristic = c;
-        }
-      }
-      List<int> message = [0xFF, 0xFF, 0xFF, 0xFF];
-      List<int> stop = [0x00, 0x00, 0x00, 0x00];
-      if (numMotors.first == 5) {
-        message.add(0xFF);
-        stop.add(0x00);
-      }
-      await characteristic.write(message);
-      Timer(Duration(seconds: 2), () async => await characteristic.write(stop));
-    } catch (e) {
-      print(e);
+class ScanResultTile extends StatelessWidget {
+  const ScanResultTile({Key key, this.result, this.onTap}) : super(key: key);
+
+  final ScanResult result;
+  final VoidCallback onTap;
+
+  Widget _buildTitle(BuildContext context) {
+    if (result.device.name.length > 0) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            result.device.name,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            result.device.id.toString(),
+            style: Theme.of(context).textTheme.caption,
+          )
+        ],
+      );
+    } else {
+      return Text(result.device.id.toString());
     }
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      title: _buildTitle(context),
+      leading: Text(result.rssi.toString()),
+      trailing: RaisedButton(
+        child: Text('CONNECT'),
+        color: Colors.black,
+        textColor: Colors.white,
+        onPressed: (result.advertisementData.connectable) ? onTap : null,
+      ),
+    );
+  }
 }
+
+

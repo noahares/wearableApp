@@ -1,65 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'dart:async';
-
-class ScanResultTile extends StatelessWidget {
-  const ScanResultTile({Key key, this.result, this.onTap}) : super(key: key);
-
-  final ScanResult result;
-  final VoidCallback onTap;
-
-  Widget _buildTitle(BuildContext context) {
-    if (result.device.name.length > 0) {
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            result.device.name,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            result.device.id.toString(),
-            style: Theme.of(context).textTheme.caption,
-          )
-        ],
-      );
-    } else {
-      return Text(result.device.id.toString());
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ExpansionTile(
-      title: _buildTitle(context),
-      leading: Text(result.rssi.toString()),
-      trailing: RaisedButton(
-        child: Text('CONNECT'),
-        color: Colors.black,
-        textColor: Colors.white,
-        onPressed: (result.advertisementData.connectable) ? onTap : null,
-      ),
-    );
-  }
-}
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:vibrate/vibrate.dart';
 
 class TimerWidget extends StatefulWidget {
-  TimerWidget({this.device, this.notify});
+  TimerWidget({this.device});
 
   final BluetoothDevice device;
-  final VoidCallback notify;
 
   @override
   TimerWidgetState createState() =>
-      TimerWidgetState(device: device, notify: notify);
+      TimerWidgetState(device: device);
 }
 
 class TimerWidgetState extends State<TimerWidget> {
-  TimerWidgetState({this.device, this.notify});
+  TimerWidgetState({this.device});
+
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
+  @override
+  void initState() {
+    super.initState();
+
+    flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
+
+    var android = new AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    var ios = new IOSInitializationSettings();
+
+    var settings = new InitializationSettings(android, ios);
+
+    flutterLocalNotificationsPlugin.initialize(settings, onSelectNotification: selectNotification);
+
+  }
+
+  Future selectNotification(String payload) async {
+    showDialog(context: context,
+    builder: (_) {
+      return new AlertDialog(
+        title: Text("Message"),
+        content: Text(payload),
+      );
+    });
+  }
+
+  Future _disconnectNotification(String message) async {
+    var android = new AndroidNotificationDetails('my channel id', 'my channel name', 'my channel description', playSound: false, importance: Importance.Max, priority: Priority.High);
+    var ios = new IOSNotificationDetails(presentSound: false);
+    var platformSpecifics = new NotificationDetails(android, ios);
+    await flutterLocalNotificationsPlugin.show(0, 'Error', message, platformSpecifics, payload: message);
+  }
 
   final BluetoothDevice device;
-  final VoidCallback notify;
   int _hours = 0;
   int _minutes = 0;
   int _seconds = 0;
@@ -134,20 +127,32 @@ class TimerWidgetState extends State<TimerWidget> {
     });
   }
 
-  void _update() {
-    setState(() {
-      _seconds = (_seconds - 1) % 60;
-      if (_seconds == 59) {
-        if (_minutes != 0 || _hours != 0) {
-          _minutes = (_minutes - 1) % 60;
-          if (_minutes == 59) {
-            _hours = _hours - 1;
+  void _update() async {
+    int seconds = (_seconds - 1) % 60;
+    int minutes = _minutes;
+    int hours = _hours;
+    if (seconds == 59) {
+        if (minutes != 0 || hours != 0) {
+          minutes = (minutes - 1) % 60;
+          if (minutes == 59) {
+            hours = hours - 1;
           }
         } else {
-          notify();
+          try {
+            await sendSignal();
+          } on ConnectivityException catch (e) {
+            _disconnectNotification(e.message);
+            if (await Vibrate.canVibrate) Vibrate.vibrate();
+          }
           reset();
+          return;
         }
       }
+    setState(() {
+      _seconds = seconds;
+      _minutes = minutes;
+      _hours = hours;
+
     });
   }
 
@@ -200,6 +205,33 @@ class TimerWidgetState extends State<TimerWidget> {
     setState(() {
       _seconds = (_seconds - 1) % 60;
     });
+  }
+
+  Future sendSignal() async {
+    BluetoothCharacteristic characteristic;
+    List<int> numMotors;
+    try {
+      List<BluetoothService> services = await device.discoverServices();
+      for (BluetoothService service in services) {
+        var characteristics = service.characteristics;
+        for (BluetoothCharacteristic c in characteristics) {
+          if (c.uuid.toString().substring(4, 8) == '0001')
+            numMotors = await c.read();
+          if (c.uuid.toString().substring(4, 8) == '0003') characteristic = c;
+        }
+      }
+      List<int> message = [0xFF, 0xFF, 0xFF, 0xFF];
+      List<int> stop = [0x00, 0x00, 0x00, 0x00];
+      if (numMotors.first == 5) {
+        message.add(0xFF);
+        stop.add(0x00);
+      }
+      await characteristic.write(message);
+      Timer(Duration(seconds: 2), () async => await characteristic.write(stop));
+    } catch (e) {
+      throw new ConnectivityException('No device connected as timer finished!');
+    }
+
   }
 }
 
@@ -341,5 +373,13 @@ class DeviceWidgetState extends State<DeviceWidget> {
                   ]);
             }),
     );
+  }
+}
+
+class ConnectivityException implements Exception {
+  String message;
+
+  ConnectivityException(String message) {
+    this.message = message;
   }
 }
