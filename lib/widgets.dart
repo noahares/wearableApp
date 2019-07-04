@@ -5,37 +5,37 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:vibrate/vibrate.dart';
 
 class TimerWidget extends StatefulWidget {
-  TimerWidget({this.device});
+  TimerWidget({Key key, this.device}) : super(key: key);
 
   final BluetoothDevice device;
 
   @override
-  TimerWidgetState createState() =>
-      TimerWidgetState(device: device);
+  _TimerWidgetState createState() =>
+      _TimerWidgetState(device: device);
 }
 
-class TimerWidgetState extends State<TimerWidget> {
-  TimerWidgetState({this.device});
+class _TimerWidgetState extends State<TimerWidget> {
+  _TimerWidgetState({this.device});
 
-  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin;
 
   @override
   void initState() {
     super.initState();
 
-    flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
+    _flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
 
-    var android = new AndroidInitializationSettings('@mipmap/ic_launcher');
+    var android = new AndroidInitializationSettings('@mipmap/bt_sensor_icon');
 
     var ios = new IOSInitializationSettings();
 
     var settings = new InitializationSettings(android, ios);
 
-    flutterLocalNotificationsPlugin.initialize(settings, onSelectNotification: selectNotification);
+    _flutterLocalNotificationsPlugin.initialize(settings, onSelectNotification: _selectNotification);
 
   }
 
-  Future selectNotification(String payload) async {
+  Future _selectNotification(String payload) async {
     showDialog(context: context,
     builder: (_) {
       return new AlertDialog(
@@ -49,7 +49,7 @@ class TimerWidgetState extends State<TimerWidget> {
     var android = new AndroidNotificationDetails('my channel id', 'my channel name', 'my channel description', playSound: false, importance: Importance.Max, priority: Priority.High);
     var ios = new IOSNotificationDetails(presentSound: false);
     var platformSpecifics = new NotificationDetails(android, ios);
-    await flutterLocalNotificationsPlugin.show(0, 'Error', message, platformSpecifics, payload: message);
+    await _flutterLocalNotificationsPlugin.show(0, 'Error', message, platformSpecifics, payload: message);
   }
 
   final BluetoothDevice device;
@@ -59,8 +59,8 @@ class TimerWidgetState extends State<TimerWidget> {
   String _hoursFormatted;
   String _minutesFormatted;
   String _secondsFormatted;
-  Timer timer;
-  bool countdownRunning = false;
+  Timer _timer;
+  bool _countdownRunning = false;
 
   @override
   Widget build(BuildContext context) {
@@ -92,12 +92,12 @@ class TimerWidgetState extends State<TimerWidget> {
           color: Colors.green,
           icon: Icons.play_arrow,
           label: 'START',
-          onPressed: (countdownRunning ? null : initTimer)),
+          onPressed: (_countdownRunning ? null : _initTimer)),
       TimerButton(
           color: Colors.red,
           icon: Icons.stop,
           label: 'STOP',
-          onPressed: (countdownRunning ? reset : null)),
+          onPressed: (_countdownRunning ? _reset : null)),
     ]);
   }
 
@@ -118,10 +118,10 @@ class TimerWidgetState extends State<TimerWidget> {
     );
   }
 
-  void initTimer() {
+  void _initTimer() {
     setState(() {
-      countdownRunning = true;
-      timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      _countdownRunning = true;
+      _timer = Timer.periodic(Duration(seconds: 1), (timer) {
         _update();
       });
     });
@@ -139,27 +139,30 @@ class TimerWidgetState extends State<TimerWidget> {
           }
         } else {
           try {
-            await sendSignal();
+            await _sendSignal();
           } on ConnectivityException catch (e) {
             _disconnectNotification(e.message);
             if (await Vibrate.canVibrate) Vibrate.vibrate();
           }
-          reset();
+          _reset();
           return;
         }
       }
-    setState(() {
-      _seconds = seconds;
-      _minutes = minutes;
-      _hours = hours;
-
-    });
+    if (this.mounted) {
+      setState(() {
+        _seconds = seconds;
+        _minutes = minutes;
+        _hours = hours;
+      });
+    } else {
+      _timer.cancel();
+    }
   }
 
-  void reset() {
+  void _reset() {
     setState(() {
-      timer.cancel();
-      countdownRunning = false;
+      _timer.cancel();
+      _countdownRunning = false;
       _seconds = 0;
       _minutes = 0;
       _hours = 0;
@@ -207,7 +210,7 @@ class TimerWidgetState extends State<TimerWidget> {
     });
   }
 
-  Future sendSignal() async {
+  Future _sendSignal() async {
     BluetoothCharacteristic characteristic;
     List<int> numMotors;
     try {
@@ -289,19 +292,19 @@ class ChangeTimeButton extends StatelessWidget {
 }
 
 class DeviceWidget extends StatefulWidget {
-  DeviceWidget({this.device});
+  DeviceWidget({Key key, this.device}) : super(key: key);
 
   final BluetoothDevice device;
 
   @override
-  DeviceWidgetState createState() => DeviceWidgetState(device: device);
+  _DeviceWidgetState createState() => _DeviceWidgetState(device: device);
 }
 
-class DeviceWidgetState extends State<DeviceWidget> {
-  DeviceWidgetState({this.device});
+class _DeviceWidgetState extends State<DeviceWidget> {
+  _DeviceWidgetState({this.device});
 
   final BluetoothDevice device;
-  bool autoReconnect = true;
+  bool _autoReconnect = true;
 
   @override
   Widget build(BuildContext context) {
@@ -316,7 +319,7 @@ class DeviceWidgetState extends State<DeviceWidget> {
               switch (snapshot.data) {
                 case BluetoothDeviceState.connected:
                   onPressed = () {
-                    autoReconnect = false;
+                    _autoReconnect = false;
                     device.disconnect();
                   };
                   text = 'DISCONNECT';
@@ -324,11 +327,11 @@ class DeviceWidgetState extends State<DeviceWidget> {
                   break;
                 case BluetoothDeviceState.disconnected:
                   onPressed = () {
-                    autoReconnect = true;
+                    _autoReconnect = true;
                     device.connect();
                   };
                   text = 'CONNECT';
-                  infoText = autoReconnect
+                  infoText = _autoReconnect
                       ? 'CONNECTION LOST, TRYING TO RECONNECT...'
                       : 'DISCONNECTED';
                   break;

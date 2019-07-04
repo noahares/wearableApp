@@ -6,6 +6,7 @@ import 'widgets.dart';
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -50,6 +51,7 @@ class BluetoothOffScreen extends StatelessWidget {
 }
 
 class FindDevicesScreen extends StatelessWidget {
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,10 +82,11 @@ class FindDevicesScreen extends StatelessWidget {
                                         BluetoothDeviceState.connected) {
                                       return RaisedButton(
                                         child: Text('SET TIMER'),
-                                        onPressed: () => Navigator.of(context)
+                                        onPressed: () =>
+                                          Navigator.of(context)
                                             .push(MaterialPageRoute(
                                                 builder: (context) =>
-                                                    TimerScreen(device: d))),
+                                                  TimerScreen(device: d))),
                                       );
                                     }
                                     return Text(snapshot.data.toString());
@@ -144,11 +147,11 @@ class TimerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget timerSection = TimerWidget(device: device);
     Widget deviceSection = DeviceWidget(device: device);
+    Widget timerSection = TimerWidget(device: device);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Wearable BT App'),
+        title: Text('Wearable BT Timer'),
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,

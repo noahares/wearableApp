@@ -8,8 +8,8 @@
          FlutterApplication and put your custom class here. -->
     <application
         android:name="io.flutter.app.FlutterApplication"
-        android:label="wearable_app"
-        android:icon="@mipmap/ic_launcher">
+        android:label="Wearable BT Timer"
+        android:icon="@mipmap/bt_sensor_icon">
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
