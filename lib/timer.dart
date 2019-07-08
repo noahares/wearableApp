@@ -10,13 +10,20 @@ class TimerWidget extends StatefulWidget {
   final BluetoothDevice device;
 
   @override
-  _TimerWidgetState createState() =>
-      _TimerWidgetState(device: device);
+  _TimerWidgetState createState() => _TimerWidgetState(device: device);
 }
 
+/*
+ * state management of the timer
+ * also initializes notifications
+ */
 class _TimerWidgetState extends State<TimerWidget> {
   _TimerWidgetState({this.device});
 
+  /*
+   * ===========================================================================
+   * notification initialization
+   */
   FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin;
 
   @override
@@ -31,26 +38,41 @@ class _TimerWidgetState extends State<TimerWidget> {
 
     var settings = new InitializationSettings(android, ios);
 
-    _flutterLocalNotificationsPlugin.initialize(settings, onSelectNotification: _selectNotification);
-
+    _flutterLocalNotificationsPlugin.initialize(settings,
+        onSelectNotification: _selectNotification);
   }
 
+  /*
+   * show in-app notification
+   */
   Future _selectNotification(String payload) async {
-    showDialog(context: context,
-    builder: (_) {
-      return new AlertDialog(
-        title: Text("Message"),
-        content: Text(payload),
-      );
-    });
+    showDialog(
+        context: context,
+        builder: (_) {
+          return new AlertDialog(
+            title: Text("Message"),
+            content: Text(payload),
+          );
+        });
   }
 
+  /*
+   * show the disconnect notification
+   */
   Future _disconnectNotification(String message) async {
-    var android = new AndroidNotificationDetails('my channel id', 'my channel name', 'my channel description', playSound: false, importance: Importance.Max, priority: Priority.High);
+    var android = new AndroidNotificationDetails(
+        'my channel id', 'my channel name', 'my channel description',
+        playSound: false, importance: Importance.Max, priority: Priority.High);
     var ios = new IOSNotificationDetails(presentSound: false);
     var platformSpecifics = new NotificationDetails(android, ios);
-    await _flutterLocalNotificationsPlugin.show(0, 'Error', message, platformSpecifics, payload: message);
+    await _flutterLocalNotificationsPlugin
+        .show(0, 'Error', message, platformSpecifics, payload: message);
   }
+
+  /*
+   * ===========================================================================
+   * end of notification stuff
+   */
 
   final BluetoothDevice device;
   int _hours = 0;
@@ -64,9 +86,12 @@ class _TimerWidgetState extends State<TimerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // nice timer output with leading zeros
     _hoursFormatted = _hours < 10 ? '0' + '$_hours' : '$_hours';
     _minutesFormatted = (_minutes < 10 ? '0' + '$_minutes' : '$_minutes');
     _secondsFormatted = (_seconds < 10 ? '0' + '$_seconds' : '$_seconds');
+
+    // add increment and decrement buttons above and bellow hours, minutes and seconds sections
     return Column(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
         // the timer columns
@@ -118,6 +143,9 @@ class _TimerWidgetState extends State<TimerWidget> {
     );
   }
 
+  /*
+   * initialize timer with _update every second
+   */
   void _initTimer() {
     setState(() {
       _countdownRunning = true;
@@ -127,27 +155,33 @@ class _TimerWidgetState extends State<TimerWidget> {
     });
   }
 
+  /*
+   * update the timer and check for disposed
+   * notify device on timer completion
+   * if device is not available notify with disconnect message
+   * finally reset timer
+   */
   void _update() async {
     int seconds = (_seconds - 1) % 60;
     int minutes = _minutes;
     int hours = _hours;
     if (seconds == 59) {
-        if (minutes != 0 || hours != 0) {
-          minutes = (minutes - 1) % 60;
-          if (minutes == 59) {
-            hours = hours - 1;
-          }
-        } else {
-          try {
-            await _sendSignal();
-          } on ConnectivityException catch (e) {
-            _disconnectNotification(e.message);
-            if (await Vibrate.canVibrate) Vibrate.vibrate();
-          }
-          _reset();
-          return;
+      if (minutes != 0 || hours != 0) {
+        minutes = (minutes - 1) % 60;
+        if (minutes == 59) {
+          hours = hours - 1;
         }
+      } else {
+        try {
+          await _sendSignal();
+        } on ConnectivityException catch (e) {
+          _disconnectNotification(e.message);
+          if (await Vibrate.canVibrate) Vibrate.vibrate();
+        }
+        _reset();
+        return;
       }
+    }
     if (this.mounted) {
       setState(() {
         _seconds = seconds;
@@ -159,6 +193,9 @@ class _TimerWidgetState extends State<TimerWidget> {
     }
   }
 
+  /*
+   * reset the timer
+   */
   void _reset() {
     setState(() {
       _timer.cancel();
@@ -169,6 +206,10 @@ class _TimerWidgetState extends State<TimerWidget> {
     });
   }
 
+  /*
+   * ===========================================================================
+   * in-/decrement hours, minutes and seconds
+   */
   void _incrementHours() {
     setState(() {
       _hours++;
@@ -210,6 +251,14 @@ class _TimerWidgetState extends State<TimerWidget> {
     });
   }
 
+  /*
+   * ===========================================================================
+   */
+
+  /*
+   * try notifying device
+   * check for number of motors and vibrate for 2 seconds
+   */
   Future _sendSignal() async {
     BluetoothCharacteristic characteristic;
     List<int> numMotors;
@@ -234,11 +283,13 @@ class _TimerWidgetState extends State<TimerWidget> {
     } catch (e) {
       throw new ConnectivityException('No device connected as timer finished!');
     }
-
   }
 }
 
-// Start and Stop buttons. trigger update and cancel it
+/*
+ * Start and Stop buttons
+ * trigger update and cancel of timer
+ */
 class TimerButton extends StatelessWidget {
   final Color color;
   final IconData icon;
@@ -272,7 +323,9 @@ class TimerButton extends StatelessWidget {
   }
 }
 
-// increment or decrement hours, minutes or seconds
+/*
+ * buttons for increment or decrement hours, minutes and seconds
+ */
 class ChangeTimeButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
@@ -300,6 +353,9 @@ class DeviceWidget extends StatefulWidget {
   _DeviceWidgetState createState() => _DeviceWidgetState(device: device);
 }
 
+/*
+ * state handling for the device info section on the timer screen
+ */
 class _DeviceWidgetState extends State<DeviceWidget> {
   _DeviceWidgetState({this.device});
 
@@ -310,75 +366,79 @@ class _DeviceWidgetState extends State<DeviceWidget> {
   Widget build(BuildContext context) {
     return Container(
       child: StreamBuilder<BluetoothDeviceState>(
-            stream: device.state,
-            initialData: BluetoothDeviceState.connecting,
-            builder: (c, snapshot) {
-              VoidCallback onPressed;
-              String text;
-              String infoText;
-              switch (snapshot.data) {
-                case BluetoothDeviceState.connected:
-                  onPressed = () {
-                    _autoReconnect = false;
-                    device.disconnect();
-                  };
-                  text = 'DISCONNECT';
-                  infoText = "CONNECTED";
-                  break;
-                case BluetoothDeviceState.disconnected:
-                  onPressed = () {
-                    _autoReconnect = true;
-                    device.connect();
-                  };
-                  text = 'CONNECT';
-                  infoText = _autoReconnect
-                      ? 'CONNECTION LOST, TRYING TO RECONNECT...'
-                      : 'DISCONNECTED';
-                  break;
-                default:
-                  onPressed = null;
-                  text = snapshot.data.toString().substring(21).toUpperCase();
-                  infoText = ('');
-                  break;
-              }
-              print(snapshot.data);
-              return Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Text(
-                      (infoText),
-                      style: Theme.of(context)
-                          .primaryTextTheme
-                          .subtitle
-                          .copyWith(color: Colors.black),
-                    ),
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          RaisedButton(
-                            onPressed: onPressed,
-                            child: Text(
-                              text,
-                              style: Theme.of(context)
-                                  .primaryTextTheme
-                                  .button
-                                  .copyWith(color: Colors.black),
-                            ),
-                          ),
-                          Text(
-                            device.name,
+          stream: device.state,
+          initialData: BluetoothDeviceState.connecting,
+          builder: (c, snapshot) {
+            VoidCallback onPressed;
+            String text;
+            String infoText;
+            // depending whether disconnect was voluntary or not, show different messages about connection
+            switch (snapshot.data) {
+              case BluetoothDeviceState.connected:
+                onPressed = () {
+                  _autoReconnect = false;
+                  device.disconnect();
+                };
+                text = 'DISCONNECT';
+                infoText = "CONNECTED";
+                break;
+              case BluetoothDeviceState.disconnected:
+                onPressed = () {
+                  _autoReconnect = true;
+                  device.connect();
+                };
+                text = 'CONNECT';
+                infoText = _autoReconnect
+                    ? 'CONNECTION LOST, TRYING TO RECONNECT...'
+                    : 'DISCONNECTED';
+                break;
+              default:
+                onPressed = null;
+                text = snapshot.data.toString().substring(21).toUpperCase();
+                infoText = ('');
+                break;
+            }
+            print(snapshot.data);
+            return Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Text(
+                    (infoText),
+                    style: Theme.of(context)
+                        .primaryTextTheme
+                        .subtitle
+                        .copyWith(color: Colors.black),
+                  ),
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        RaisedButton(
+                          onPressed: onPressed,
+                          child: Text(
+                            text,
                             style: Theme.of(context)
                                 .primaryTextTheme
-                                .title
+                                .button
                                 .copyWith(color: Colors.black),
-                          )
-                        ])
-                  ]);
-            }),
+                          ),
+                        ),
+                        Text(
+                          device.name,
+                          style: Theme.of(context)
+                              .primaryTextTheme
+                              .title
+                              .copyWith(color: Colors.black),
+                        )
+                      ])
+                ]);
+          }),
     );
   }
 }
 
+/*
+ * custom exception if connection to device is lost
+ */
 class ConnectivityException implements Exception {
   String message;
 

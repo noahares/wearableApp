@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'dart:async';
-import 'widgets.dart';
+import 'timer.dart';
 
 void main() => runApp(MyApp());
 
@@ -15,6 +15,7 @@ class MyApp extends StatelessWidget {
           stream: FlutterBlue.instance.state,
           initialData: BluetoothState.unknown,
           builder: (c, snapshot) {
+            // show different screen when BT is off
             final state = snapshot.data;
             if (state == BluetoothState.on) {
               return FindDevicesScreen();
@@ -25,6 +26,9 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/*
+ * screen showed if BT is off
+ */
 class BluetoothOffScreen extends StatelessWidget {
   const BluetoothOffScreen({Key key, this.state}) : super(key: key);
   final BluetoothState state;
@@ -50,6 +54,9 @@ class BluetoothOffScreen extends StatelessWidget {
   }
 }
 
+/*
+ * screen for scanning for devices and initial connection
+ */
 class FindDevicesScreen extends StatelessWidget {
 
   @override
@@ -78,6 +85,7 @@ class FindDevicesScreen extends StatelessWidget {
                                   initialData:
                                       BluetoothDeviceState.disconnected,
                                   builder: (c, snapshot) {
+                                    // if already connected, navigate to timer screen
                                     if (snapshot.data ==
                                         BluetoothDeviceState.connected) {
                                       return RaisedButton(
@@ -104,6 +112,7 @@ class FindDevicesScreen extends StatelessWidget {
                           .map(
                             (r) => ScanResultTile(
                                   result: r,
+                                  // navigate to timer screen when pressing connect button
                                   onTap: () => Navigator.of(context).push(
                                           MaterialPageRoute(builder: (context) {
                                         r.device.connect();
@@ -118,6 +127,7 @@ class FindDevicesScreen extends StatelessWidget {
           ),
         ),
       ),
+      // the scan button
       floatingActionButton: StreamBuilder<bool>(
         stream: FlutterBlue.instance.isScanning,
         initialData: false,
@@ -140,6 +150,9 @@ class FindDevicesScreen extends StatelessWidget {
   }
 }
 
+/*
+ * the main screen with the timer and device connection info
+ */
 class TimerScreen extends StatelessWidget {
   const TimerScreen({Key key, this.device}) : super(key: key);
 
@@ -165,6 +178,9 @@ class TimerScreen extends StatelessWidget {
   }
 }
 
+/*
+ * nice scan result tiles with info about signal strength
+ */
 class ScanResultTile extends StatelessWidget {
   const ScanResultTile({Key key, this.result, this.onTap}) : super(key: key);
 
