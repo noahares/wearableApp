@@ -162,6 +162,7 @@ class _TimerWidgetState extends State<TimerWidget> {
    * finally reset timer
    */
   void _update() async {
+    // use local variables to not call setState() after dispose
     int seconds = (_seconds - 1) % 60;
     int minutes = _minutes;
     int hours = _hours;
@@ -281,7 +282,7 @@ class _TimerWidgetState extends State<TimerWidget> {
       await characteristic.write(message);
       Timer(Duration(seconds: 2), () async => await characteristic.write(stop));
     } catch (e) {
-      throw new ConnectivityException('No device connected as timer finished!');
+      throw new ConnectivityException('No wearable connected as timer finished!');
     }
   }
 }
